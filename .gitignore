@@ -1,0 +1,4 @@
+# Game Boy ROMs
+*.gb
+
+build/

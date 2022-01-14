@@ -1,0 +1,33 @@
+# Mapping from GameBoy cartridge pins to Raspberry PI pins
+# https://3.bp.blogspot.com/-xYpPeD5bht4/WDGhmkeyaNI/AAAAAAAABGM/sCLEer-ndJwhG8OJS2s3CaOtIsY2WQMBACLcB/s1600/pi_board_pinout.jpg
+gameboy-pins:
+    RD: 2
+    WR: 3
+
+    # Address selection pins
+    A0: 4
+    A1: 14
+    A2: 15
+    A3: 17
+    A4: 18
+    A5: 27
+    A6: 22
+    A7: 23
+    A8: 24
+    A9: 10
+    A10: 9
+    A11: 25
+    A12: 11
+    A13: 8
+    A14: 7
+    A15: 5
+
+    # Data pins
+    D0: 6
+    D1: 12
+    D2: 13
+    D3: 19
+    D4: 16
+    D5: 26
+    D6: 20
+    D7: 21
