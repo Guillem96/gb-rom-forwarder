@@ -1,22 +1,39 @@
 #include <stdio.h>
-#include <math.h>
+#include <stdlib.h>
 
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
 #include "hardware/vreg.h"
 #include "roms/tetris.h"
+#include "cartridge.h"
 
 #define RESET_PIN 28
 #define WR_PIN 27
 #define ADDR_MASK 0b1111111111111111
 #define DATA_MASK 0b100011111110000000000000000
 
-void forward_rom_only();
+// Forwards a ROM only cartridge
+void forward_rom_only(const cartridge_t*);
+
+// Initializes a GPIO pin in output mode
 void gpio_init_output(int);
+
+// Initializes a GPIO pin in input mode
 void gpio_init_input(int);
+
+// Sets the Game Boy data bus GPIO pins in input mode
 inline void gpio_data_read_mode();
+
+// Sets the Game Boy data bus GPIO pins in output mode
 inline void gpio_data_write_mode();
+
+// Writes a byte to GPIO data bus pins
+inline void gpio_write_data(uint8_t);
+
+// Reads the state of the GPIO data bus pins
 inline uint8_t gpio_read_input_data();
+
+// Resets the Game Boy
 void gameboy_reset();
 
 int main()
@@ -44,7 +61,9 @@ int main()
     gpio_init_mask(DATA_MASK);
     gpio_data_write_mode();
 
-    forward_rom_only();
+    cartridge_t* cart = (cartridge_t*)malloc(sizeof(cartridge_t));
+    cart->bytes = tetris;
+    forward_rom_only(cart);
 }
 
 void gpio_init_output(int pin)
@@ -77,37 +96,38 @@ void gpio_data_write_mode()
     gpio_set_dir_out_masked(DATA_MASK);
 }
 
-uint8_t gpio_read_input_data()
+void gpio_write_data(uint8_t b)
 {
-    uint32_t allPins = gpio_get_all() & DATA_MASK;
-    return allPins >> 16 | allPins >> 19;
+    uint32_t out_data = (uint32_t)(b & 0b01111111) << 16;
+    out_data |= (uint32_t)(b & 0b10000000) << 19;
+    gpio_put_masked(DATA_MASK, out_data);
 }
 
-void forward_rom_only()
+uint8_t gpio_read_input_data()
 {
+    uint32_t all_pins = gpio_get_all() & DATA_MASK;
+    return all_pins >> 16 | all_pins >> 19;
+}
+
+void forward_rom_only(const cartridge_t* cart)
+{
+    uint16_t addr = 0;
+    uint16_t last_addr = 0;
+
     set_sys_clock_khz(270000, true);
     sleep_ms(1000);
     gameboy_reset();
 
-    static uint16_t lastAddress = 0;
-    uint16_t address = 0;
-    uint32_t outputData = 0;
-
-    while (true)
+    while (1)
     {
-        address = gpio_get_all() & ADDR_MASK;
-        if (address != lastAddress)
+        addr = gpio_get_all() & ADDR_MASK;
+        if (addr != last_addr)
         {
-            lastAddress = address;
+            last_addr = addr;
             if (gpio_get(WR_PIN))
             {
                 gpio_data_write_mode();
-
-                outputData = 0;
-                outputData |= ((uint32_t)(tetris[address]) & 0b01111111) << 16;
-                outputData |= ((uint32_t)(tetris[address] >> 7)) << 26;
-
-                gpio_put_masked(DATA_MASK, outputData);
+                gpio_write_data(cartridge_read(cart, addr));
             }
         }
     }

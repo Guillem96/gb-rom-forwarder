@@ -16,19 +16,19 @@ set(PICO_EXAMPLES_PATH ${PROJECT_SOURCE_DIR})
 set(project_name PICO_GB_Bootloader)
 project(${project_name})
 
-set(src src/main.c)
-set(headers "")
-
-file(GLOB roms "roms/*.gb")
+set(src src/main.c src/cartridge.c)
+include_directories(include)
 
 # Generate rom files
+set(roms_headers "")
+file(GLOB roms "roms/*.gb")
 configure_file(scripts/rom_to_header.py ${CMAKE_CURRENT_BINARY_DIR}/rom_to_header COPYONLY)
 
 foreach(gb_rom ${roms})
   get_filename_component(rom_name ${gb_rom} NAME_WLE)
   set(rom_output ${CMAKE_CURRENT_BINARY_DIR}/include/roms/${rom_name}.h)
   add_custom_target(
-    always_run_target ALL
+    ${rom_name}_build ALL
     DEPENDS ${rom_output}
   )
 
@@ -39,10 +39,10 @@ foreach(gb_rom ${roms})
     ARGS ${gb_rom} ${rom_output}
   )
 
-  set(headers ${headers} ${rom_output})
+  set(roms_headers ${roms_headers} ${rom_output})
 endforeach()
 
-add_executable(${project_name} ${src} ${headers})
+add_executable(${project_name} ${src} ${roms_headers})
 target_include_directories(${project_name} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/include)
 
 # Pull in our pico_stdlib which aggregates commonly used features
