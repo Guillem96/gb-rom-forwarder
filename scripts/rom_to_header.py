@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
-from pathlib import Path
 import argparse
+from pathlib import Path
+
+import fastlz
 
 
 def main():
@@ -15,11 +17,18 @@ def main():
     name = args.name if args.name else input_path.stem
 
     rom_bytes = input_path.read_bytes()
-    rom_n_bytes = input_path.stat().st_size
+    original_rom_n_bytes = len(rom_bytes)
+    rom_bytes = fastlz.compress(rom_bytes, level=1)
+    compressed_rom_n_bytes = len(rom_bytes)
+
     with output_path.open("w") as header_f:
         input_path.__sizeof__()
-        print(f"const unsigned int {name}_size = {rom_n_bytes};\n",
-              file=header_f)
+        print(
+            f"const unsigned int {name}_compressed_size = {compressed_rom_n_bytes};",
+            file=header_f)
+        print(
+            f"const unsigned int {name}_original_size = {original_rom_n_bytes};\n",
+            file=header_f)
         print(f"unsigned char {name}[] = {{\n    ", end="", file=header_f)
 
         for i, bytes_chunk in enumerate(_chunker(rom_bytes, 16)):
@@ -27,7 +36,7 @@ def main():
                   end=",\n",
                   file=header_f)
 
-            if i < len(rom_bytes) // 16 - 1:
+            if i < len(rom_bytes) // 16:
                 print("    ", end="", file=header_f)
 
         print("};", file=header_f)
@@ -43,11 +52,13 @@ def _parse_args(argv=None):
 
     parser.add_argument("input", help="Game Boy rom. Usually a .gb")
     parser.add_argument("output", help="Generated header file path.")
-    parser.add_argument("--name",
-                        default=None,
-                        help="Name of the variable containing the rom bytes "
-                        "array. If not set the name is taken from the "
-                        "filename (e.g. roms/tetris.gb -> tetris).")
+    parser.add_argument(
+        "--name",
+        default=None,
+        help="Name of the variable containing the rom bytes "
+        "array. If not set the name is taken from the "
+        "filename (e.g. roms/tetris.gb -> tetris).",
+    )
 
     return parser.parse_args(argv)
 

@@ -16,7 +16,7 @@ set(PICO_EXAMPLES_PATH ${PROJECT_SOURCE_DIR})
 set(project_name PICO_GB_Bootloader)
 project(${project_name})
 
-set(src src/main.c src/cartridge.c)
+file(GLOB src "src/*.c")
 include_directories(include)
 
 # Generate rom files
@@ -27,18 +27,8 @@ configure_file(scripts/rom_to_header.py ${CMAKE_CURRENT_BINARY_DIR}/rom_to_heade
 foreach(gb_rom ${roms})
   get_filename_component(rom_name ${gb_rom} NAME_WLE)
   set(rom_output ${CMAKE_CURRENT_BINARY_DIR}/include/roms/${rom_name}.h)
-  add_custom_target(
-    ${rom_name}_build ALL
-    DEPENDS ${rom_output}
-  )
-
-  add_custom_command(
-    OUTPUT ${rom_output}
-    DEPENDS ${gb_rom}
-    COMMAND ./rom_to_header
-    ARGS ${gb_rom} ${rom_output}
-  )
-
+  add_custom_target(${rom_name}_build ALL DEPENDS ${rom_output})
+  add_custom_command(OUTPUT ${rom_output} DEPENDS ${gb_rom} COMMAND ./rom_to_header ARGS ${gb_rom} ${rom_output})
   set(roms_headers ${roms_headers} ${rom_output})
 endforeach()
 

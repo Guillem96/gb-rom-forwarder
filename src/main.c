@@ -6,6 +6,7 @@
 #include "hardware/vreg.h"
 #include "roms/tetris.h"
 #include "cartridge.h"
+#include "fastlz.h"
 
 #define RESET_PIN 28
 #define WR_PIN 27
@@ -13,7 +14,7 @@
 #define DATA_MASK 0b100011111110000000000000000
 
 // Forwards a ROM only cartridge
-void forward_rom_only(const cartridge_t*);
+void forward_rom_only(const cartridge_t *);
 
 // Initializes a GPIO pin in output mode
 void gpio_init_output(int);
@@ -44,9 +45,9 @@ int main()
     sleep_ms(1000);
     set_sys_clock_khz(360000, true);
 
-    gpio_init_output(25);
+    gpio_init_output(25); // Board LED
 
-    // Reset pin inizialization
+    // Reset pin initialization
     gpio_init_output(RESET_PIN);
     gpio_put(RESET_PIN, 1);
 
@@ -61,9 +62,19 @@ int main()
     gpio_init_mask(DATA_MASK);
     gpio_data_write_mode();
 
-    cartridge_t* cart = (cartridge_t*)malloc(sizeof(cartridge_t));
-    cart->bytes = tetris;
+    // Uncompress ROM
+    uint8_t *uncompressed_tetris = (uint8_t *)malloc(tetris_original_size);
+
+    // Since the ROM is compiled in Python fastlz package adds the size of the uncompressed array
+    // at the front. So we skip it by adding sizeof(uint32_t) to the input pointer and substracting the
+    // same amount to the input size.
+    uint32_t out_size = fastlz_decompress(
+        tetris + sizeof(uint32_t), tetris_compressed_size - sizeof(uint32_t),
+        uncompressed_tetris, tetris_original_size);
+
+    cartridge_t *cart = cartridge_w_custom_logo(uncompressed_tetris);
     forward_rom_only(cart);
+    cartridge_free(cart);
 }
 
 void gpio_init_output(int pin)
@@ -109,7 +120,7 @@ uint8_t gpio_read_input_data()
     return all_pins >> 16 | all_pins >> 19;
 }
 
-void forward_rom_only(const cartridge_t* cart)
+void forward_rom_only(const cartridge_t *cart)
 {
     uint16_t addr = 0;
     uint16_t last_addr = 0;
