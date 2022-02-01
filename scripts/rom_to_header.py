@@ -22,7 +22,6 @@ def main():
     compressed_rom_n_bytes = len(rom_bytes)
 
     with output_path.open("w") as header_f:
-        input_path.__sizeof__()
         print(
             f"const unsigned int {name}_compressed_size = {compressed_rom_n_bytes};",
             file=header_f)
